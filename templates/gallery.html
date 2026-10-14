@@ -1,0 +1,33 @@
+{% extends "base.html" %}
+{% block title %}My Gallery - AI Reel Generator{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}">{% endblock %}
+{% block content %}
+<div class="container page">
+    <div class="page-head">
+        <h1>My Reels</h1>
+        <a class="btn btn-accent" href="{{ url_for('reels.create') }}"><i class="fa-solid fa-plus"></i> Create new reel</a>
+    </div>
+
+    <div class="toolbar" id="toolbar">
+        <div class="search-box">
+            <i class="fa-solid fa-magnifying-glass"></i>
+            <label class="sr-only" for="searchInput">Search reels</label>
+            <input class="input" type="search" id="searchInput" placeholder="Search reels…" autocomplete="off">
+        </div>
+        <div class="chips" id="platformChips" role="group" aria-label="Filter by platform">
+            <button class="chip" type="button" data-platform="all" aria-pressed="true">All</button>
+            {% for f in formats %}<button class="chip" type="button" data-platform="{{ f.key }}" aria-pressed="false">{{ f.short_label }}</button>{% endfor %}
+        </div>
+        <label class="sr-only" for="sortSelect">Sort</label>
+        <select class="select" id="sortSelect"><option value="newest">Newest first</option><option value="oldest">Oldest first</option></select>
+    </div>
+
+    <div id="galleryRoot" aria-live="polite"></div>
+    <div class="load-more" id="loadMoreWrap" hidden><button class="btn btn-ghost" type="button" id="loadMoreBtn">Load more</button></div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>window.REEL_URLS = {create: {{ url_for('reels.create')|tojson }}};</script>
+<script src="{{ url_for('static', filename='js/reels-ui.js') }}"></script>
+<script src="{{ url_for('static', filename='js/gallery.js') }}"></script>
+{% endblock %}

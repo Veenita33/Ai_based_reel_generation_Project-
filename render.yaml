@@ -1,0 +1,33 @@
+services:
+  - type: web
+    name: ai-reel-generator
+    runtime: python
+    plan: starter
+    buildCommand: "pip install -r requirements.txt"
+    startCommand: "gunicorn wsgi:app --workers 2 --threads 4 --timeout 600"
+    autoDeploy: true
+    disk:
+      name: reel-data
+      mountPath: /opt/render/project/src/storage
+      sizeGB: 1
+    envVars:
+      - key: SECRET_KEY
+        generateValue: true
+      - key: ELEVENLABS_API_KEY
+        sync: false
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: GEMINI_MODEL
+        value: "gemini-2.5-flash"
+      - key: ELEVENLABS_VOICE_ID
+        value: "21m00Tcm4TlvDq8ikWAM"
+      - key: ELEVENLABS_MODEL_ID
+        value: "eleven_multilingual_v2"
+      - key: REEL_STORAGE_DIR
+        value: "/opt/render/project/src/storage"
+      - key: TRUST_PROXY
+        value: "1"
+      - key: SESSION_COOKIE_SECURE
+        value: "1"
+      - key: PYTHON_VERSION
+        value: "3.11.9"

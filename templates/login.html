@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% block title %}Log in - AI Reel Generator{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/auth.css') }}">{% endblock %}
+{% block content %}
+<div class="container auth-wrap"><div class="panel auth-card">
+    <h1>Welcome back</h1>
+    <p class="auth-sub">Log in to create reels and open your gallery.</p>
+    {% if from_free %}<div class="notice"><span><strong>Your free reel is saved.</strong> Sign in and it will be added to your gallery.</span></div>{% endif %}
+    <form method="post" action="{{ url_for('auth.login') }}">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+        <input type="hidden" name="next" value="{{ next }}">
+        <div class="field"><label for="username">Username or email</label><input class="input" id="username" type="text" name="username" value="{{ username or '' }}" required autofocus autocomplete="username"></div>
+        <div class="field"><label for="password">Password</label><input class="input" id="password" type="password" name="password" required autocomplete="current-password"></div>
+        <div class="field"><label class="checkbox"><input type="checkbox" name="remember"> Remember me</label></div>
+        <button type="submit" class="btn btn-primary btn-lg btn-block">Log in</button>
+    </form>
+    <p class="auth-switch">New here? <a href="{{ url_for('auth.register', next=next or None, **({'from': 'free'} if from_free else {})) }}">Create an account</a></p>
+</div></div>
+{% endblock %}

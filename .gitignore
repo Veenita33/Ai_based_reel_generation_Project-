@@ -1,0 +1,24 @@
+# Environment / secrets
+.env
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+
+# Database
+app.db
+*.sqlite3
+
+# Generated / uploaded media (private per-user storage - never commit)
+storage/
+static/reels/*
+!static/reels/.gitkeep
+static/uploads/*
+!static/uploads/.gitkeep
+
+# OS/editor cruft
+.DS_Store
+.vscode/
+.idea/

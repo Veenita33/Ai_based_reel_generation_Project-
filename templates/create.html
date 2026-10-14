@@ -1,0 +1,322 @@
+{% extends "base.html" %}
+{% block title %}Create Reel - AI Reel Generator{% endblock %}
+{% block extra_css %}
+<link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}">
+<link rel="stylesheet" href="{{ url_for('static', filename='css/create.css') }}">
+{% endblock %}
+
+{% block content %}
+<div class="container page">
+    <div class="page-head">
+        <div>
+            <h1>Create your reel</h1>
+            <p class="muted" style="margin:.4rem 0 0">Add your videos, images and audio. AI can write the narration, then we handle the voiceover and the rendering.</p>
+        </div>
+    </div>
+
+    {% if trial.is_guest %}
+        {% if trial.free_used %}
+        <div class="notice notice-neutral" style="margin-bottom:1.25rem"><span><strong>You've used your free reel.</strong> Sign in to continue creating. <a href="{{ url_for('auth.login', next=url_for('reels.create'), **{'from': 'free'}) }}">Sign in</a> or <a href="{{ url_for('auth.register', next=url_for('reels.create'), **{'from': 'free'}) }}">create an account</a>.</span></div>
+        {% else %}
+        <div class="notice" style="margin-bottom:1.25rem"><span><strong>Your first reel is on us 🎬</strong> No account needed. Sign in later to keep it in your own gallery.</span></div>
+        {% endif %}
+    {% endif %}
+
+    <div class="create-layout">
+        <div class="form-view" id="formView">
+            <form id="reelForm" novalidate data-locked="{{ '1' if not trial.allowed else '0' }}" data-max-clips="{{ max_clips }}" data-max-chars="{{ max_chars }}" data-ai="{{ '1' if narration.enabled else '0' }}" data-authenticated="{{ '1' if current_user.is_authenticated else '0' }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+
+                <section class="step-block">
+                    <div class="step-head"><span class="step-num">1</span><div><h2>Where will you publish?</h2><p>This sets the size of your reel.</p></div></div>
+                    <div class="platform-grid" role="radiogroup" aria-label="Platform">
+                        {% for f in formats %}
+                        <label class="platform-card">
+                            <input type="radio" name="platform" value="{{ f.key }}" {{ 'checked' if f.key == default_format }}
+                                   data-label="{{ f.label }}" data-ratio="{{ f.aspect_ratio }}" data-w="{{ f.width }}" data-h="{{ f.height }}"
+                                   data-resolution="{{ f.resolution }}" data-orientation="{{ f.orientation }}" data-rec="{{ f.recommended_seconds or '' }}" data-custom="{{ '1' if f.customizable }}">
+                            <span class="card-face">
+                                <span class="card-check"><i class="fa-solid fa-check"></i></span>
+                                <i class="card-icon {{ f.icon }}"></i>
+                                <span class="card-name">{{ f.label }}</span>
+                                <span class="card-spec">{% if f.customizable %}Choose your own{% else %}{{ f.aspect_ratio }} · {{ f.resolution }}{% endif %}</span>
+                            </span>
+                        </label>
+                        {% endfor %}
+                    </div>
+                    <div class="field-error" data-error-for="platform"></div>
+                </section>
+
+                <section class="step-block">
+                    <div class="step-head"><span class="step-num">2</span><div><h2>Format</h2><p>What we'll render.</p></div></div>
+                    <div class="format-summary">
+                        <div class="ratio-preview"><div class="ratio-box" id="ratioBox"></div></div>
+                        <div class="spec-grid">
+                            <div><b>Aspect ratio</b><span id="specRatio"></span></div>
+                            <div><b>Resolution</b><span id="specRes"></span></div>
+                            <div><b>Orientation</b><span id="specOrient"></span></div>
+                            <div><b>Recommended length</b><span id="specRec"></span></div>
+                        </div>
+                    </div>
+                    <div class="custom-panel" id="customPanel" hidden>
+                        <div class="label">Start from a preset</div>
+                        <div class="chips">
+                            {% for p in custom_presets %}<button type="button" class="chip" data-preset data-w="{{ p.width }}" data-h="{{ p.height }}">{{ p.label }} {{ p.aspect_ratio }}</button>{% endfor %}
+                        </div>
+                        <div class="custom-dims">
+                            <div><label for="customW">Width (px)</label><input class="input" type="number" id="customW" name="width" min="{{ limits.min }}" max="{{ limits.max }}" step="2" value="1080" inputmode="numeric"></div>
+                            <div><label for="customH">Height (px)</label><input class="input" type="number" id="customH" name="height" min="{{ limits.min }}" max="{{ limits.max }}" step="2" value="1920" inputmode="numeric"></div>
+                        </div>
+                        <div class="hint">{{ limits.min }}–{{ limits.max }} px per side. Sizes are rounded to even numbers.</div>
+                    </div>
+                </section>
+
+                <section class="step-block">
+                    <div class="step-head"><span class="step-num">3</span><div><h2>Your media</h2><p>Videos, images and audio play in the order listed.</p></div></div>
+                    <div class="field">
+                        <label for="title">Reel title</label>
+                        <input class="input" id="title" name="title" maxlength="200" placeholder="e.g. Summer launch teaser">
+                    </div>
+                    <div class="field" style="margin-bottom:0">
+                        <span class="label">Videos, Images &amp; Audio</span>
+                        <label class="dropzone" id="dropzone" for="fileInput">
+                            <i class="fa-solid fa-photo-film"></i>
+                            <b>Drag &amp; drop your media here</b>
+                            <span class="dz-types">Videos &bull; Images &bull; Audio</span>
+                            <span class="btn btn-primary dz-btn"><i class="fa-solid fa-plus"></i> Add Media</span>
+                            <span class="muted dz-help">MP4, MOV, AVI, MKV, WebM &middot; JPG, PNG, WebP &middot; MP3, WAV, M4A, AAC, OGG<br>Up to {{ max_clips }} files. Select several at once.</span>
+                            <input type="file" id="fileInput" multiple
+                                   accept="video/*,image/*,audio/*,.mp4,.mov,.avi,.mkv,.webm,.jpg,.jpeg,.png,.webp,.mp3,.wav,.m4a,.aac,.ogg">
+                        </label>
+                        <ol class="media-list" id="mediaList"></ol>
+                        <div class="field-error" data-error-for="files"></div>
+                    </div>
+                    <div class="media-options" id="imageOptions" hidden>
+                        <div class="field" style="margin:0">
+                            <label for="imageSeconds">Each image is shown for</label>
+                            <div class="inline-unit"><input class="input" type="number" id="imageSeconds" name="image_seconds" min="{{ narration.min_image_seconds }}" max="{{ narration.max_image_seconds }}" step="0.5" value="{{ narration.image_seconds }}" inputmode="decimal"><span>seconds</span></div>
+                            <div class="hint">If your narration is longer, still images are held a little longer so the reel doesn't loop.</div>
+                        </div>
+                        <div class="field" style="margin:0">
+                            <label for="imageFit">Image fit</label>
+                            <select class="select" id="imageFit" name="image_fit">
+                                {% for key, label in narration.image_fits.items() %}<option value="{{ key }}" {{ 'selected' if key == narration.default_image_fit }}>{{ label }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </section>
+
+                <section class="step-block" id="narrationBlock">
+                    <div class="step-head"><span class="step-num">4</span><div><h2>Narration</h2><p>Let AI watch your media and write the script, or write your own.</p></div></div>
+
+                    {% if not narration.enabled %}
+                    <div class="notice notice-neutral" style="margin-bottom:1rem"><span><strong>AI narration isn't set up on this server yet.</strong> You can still write your narration by hand below.</span></div>
+                    {% endif %}
+
+                    <fieldset class="ai-panel" id="aiPanel" {{ 'disabled' if not narration.enabled }}>
+                        <legend><i class="fa-solid fa-wand-magic-sparkles"></i> AI Narration</legend>
+                        <div class="ai-grid">
+                            <div class="field">
+                                <label for="aiDuration">Duration</label>
+                                <select class="select" id="aiDuration">
+                                    {% for d in narration.durations %}<option value="{{ d }}" {{ 'selected' if d == narration.default_seconds }}>{{ (d // 60 ~ ' minutes') if d >= 120 else (d ~ ' seconds') }}</option>{% endfor %}
+                                    <option value="custom">Custom duration</option>
+                                </select>
+                                <div class="inline-unit" id="aiDurCustomWrap" hidden style="margin-top:.5rem"><input class="input" type="number" id="aiDurCustom" min="{{ narration.min_seconds }}" max="{{ narration.max_seconds }}" value="{{ narration.default_seconds }}" inputmode="numeric" aria-label="Narration duration in seconds"><span>seconds</span></div>
+                            </div>
+                            <div class="field">
+                                <label for="aiLanguage">Language</label>
+                                <select class="select" id="aiLanguage">
+                                    {% for key, l in narration.languages.items() %}<option value="{{ key }}" {{ 'selected' if key == narration.default_language }}>{{ l.label }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="aiTone">Tone</label>
+                                <select class="select" id="aiTone">
+                                    {% for key, label in narration.tones.items() %}<option value="{{ key }}" {{ 'selected' if key == narration.default_tone }}>{{ label }}</option>{% endfor %}
+                                </select>
+                                <input class="input" id="aiToneCustom" maxlength="150" placeholder="Custom tone (optional), e.g. witty but warm" style="margin-top:.5rem">
+                            </div>
+                            <div class="field">
+                                <label for="aiStyle">Style</label>
+                                <select class="select" id="aiStyle">
+                                    {% for key, label in narration.styles.items() %}<option value="{{ key }}" {{ 'selected' if key == narration.default_style }}>{{ label }}</option>{% endfor %}
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label for="aiAudience">Target audience</label>
+                                <select class="select" id="aiAudience">
+                                    {% for key, label in narration.audiences.items() %}<option value="{{ key }}" {{ 'selected' if key == narration.default_audience }}>{{ label }}</option>{% endfor %}
+                                    <option value="custom">Custom audience&hellip;</option>
+                                </select>
+                                <input class="input" id="aiAudienceCustom" maxlength="100" placeholder="Who is this for?" style="margin-top:.5rem" hidden>
+                            </div>
+                            <div class="field">
+                                <label for="aiSpeed">Speaking speed</label>
+                                <select class="select" id="aiSpeed">
+                                    {% for key, v in narration.speeds.items() %}<option value="{{ key }}" {{ 'selected' if key == narration.default_speed }}>{{ v.label }}</option>{% endfor %}
+                                </select>
+                            </div>
+                        </div>
+                        <div class="field">
+                            <label for="aiInstructions">Additional instructions</label>
+                            <textarea class="textarea" id="aiInstructions" rows="3" maxlength="1000" placeholder="e.g. Create an energetic Instagram Reel narration for students. Focus on the product benefits."></textarea>
+                        </div>
+                        <button type="button" class="btn btn-accent" id="generateBtn"><i class="fa-solid fa-wand-magic-sparkles"></i> Generate AI Narration</button>
+
+                        <div class="ai-progress" id="aiProgress" hidden aria-live="polite">
+                            <div class="upload-bar" id="aiBar"><i></i></div>
+                            <p class="muted" id="aiUploadNote" style="margin:.25rem 0 .5rem"></p>
+                            <ol class="stage-list ai-stages" id="aiStages">
+                                <li data-stage="analyzing"><span class="dot"><i class="fa-solid fa-check"></i></span>Analyzing your media&hellip;</li>
+                                <li data-stage="understanding"><span class="dot"><i class="fa-solid fa-check"></i></span>Understanding scenes&hellip;</li>
+                                <li data-stage="writing"><span class="dot"><i class="fa-solid fa-check"></i></span>Creating narration&hellip;</li>
+                                <li data-stage="ready"><span class="dot"><i class="fa-solid fa-check"></i></span>Narration ready</li>
+                            </ol>
+                        </div>
+                        <div class="notice notice-neutral" id="aiError" hidden role="alert"><span id="aiErrorMsg"></span></div>
+                    </fieldset>
+
+                    <div class="script-panel">
+                        <div class="script-head">
+                            <label for="text" style="margin:0">Narration script</label>
+                            <span class="script-badge" id="scriptBadge" hidden></span>
+                        </div>
+                        <textarea class="textarea" id="text" name="text" rows="8" maxlength="{{ max_chars }}" placeholder="Write exactly what the voice should say, or generate it with AI above&hellip;"></textarea>
+                        <div class="script-meta">
+                            <span>Word count: <b id="wordCount">0</b></span>
+                            <span>Estimated duration: <b id="estDur">0:00</b></span>
+                            <span class="counter"><span id="charCount">0</span> / {{ max_chars }}</span>
+                        </div>
+                        <div class="length-hint" id="lengthHint" hidden>
+                            <span id="lengthHintText"></span>
+                            <button type="button" class="btn btn-ghost btn-sm" id="adjustBtn"></button>
+                        </div>
+                        <ul class="ai-notes" id="aiNotes" hidden></ul>
+                        <div class="script-actions">
+                            <button type="button" class="btn btn-ghost" id="regenBtn" hidden><i class="fa-solid fa-rotate"></i> Regenerate</button>
+                            <button type="button" class="btn btn-ghost" id="editBtn"><i class="fa-solid fa-pen"></i> Edit</button>
+                            <button type="button" class="btn btn-ghost" id="copyBtn"><i class="fa-regular fa-copy"></i> Copy</button>
+                            <button type="button" class="btn btn-ghost" id="clearBtn"><i class="fa-solid fa-eraser"></i> Clear</button>
+                            <button type="button" class="btn btn-primary" id="approveBtn"><i class="fa-solid fa-check"></i> Approve Narration</button>
+                        </div>
+                        <div class="field-error" data-error-for="text"></div>
+                    </div>
+                </section>
+
+                <section class="step-block" id="voiceBlock">
+                    <div class="step-head"><span class="step-num">5</span><div><h2>Voice and music</h2><p>The AI voiceover is always the loudest layer.</p></div></div>
+                    <div class="row-2">
+                        <div class="field" style="margin:0">
+                            <label for="voice">Voice</label>
+                            <select class="select" id="voice" name="voice">
+                                {% for v in voices %}<option value="{{ v.id }}">{{ v.name }}{% if v.description %} - {{ v.description }}{% endif %}</option>{% endfor %}
+                            </select>
+                            <div class="field-error" data-error-for="voice"></div>
+                        </div>
+                        <div class="field" style="margin:0">
+                            <label for="song">Background music</label>
+                            <select class="select" id="song" name="song">
+                                <option value="">No background music</option>
+                                {% for s in songs %}<option value="{{ s }}">{{ s }}</option>{% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                    <div class="mix-panel">
+                        <div class="mix-row"><span>Voiceover</span><div class="mix-fixed">100%</div></div>
+                        <div class="mix-row">
+                            <label for="musicVol">Background music</label>
+                            <input type="range" id="musicVol" name="music_volume" min="0" max="100" value="15"><output id="musicVolOut">15%</output>
+                        </div>
+                        <div class="mix-row">
+                            <label for="origVol">Original video sound</label>
+                            <input type="range" id="origVol" name="original_volume" min="0" max="100" value="10"><output id="origVolOut">10%</output>
+                        </div>
+                        <label class="check-row" id="useAudioRow" hidden><input type="checkbox" id="useAudio" checked> Use my uploaded audio as background music (it replaces the library song)</label>
+                    </div>
+                </section>
+
+                <section class="step-block">
+                    <div class="step-head"><span class="step-num">6</span><div><h2>Generate</h2><p>Rendering usually takes a minute or two.</p></div></div>
+                    <button class="btn btn-accent btn-lg btn-block" type="submit" id="submitBtn">
+                        {% if trial.is_guest and trial.free_used %}Sign in to generate{% elif trial.is_guest %}Generate my free reel{% else %}Generate reel{% endif %}
+                    </button>
+                </section>
+            </form>
+        </div>
+
+        <!-- progress + result replace the form after submitting -->
+        <div class="progress-view panel" id="progressView" hidden>
+            <h2 id="progressTitle">Uploading your media</h2>
+            <div class="upload-bar" id="uploadBar"><i></i></div>
+            <p class="muted" id="uploadNote" style="margin:0">Keep this tab open until the upload finishes.</p>
+            <ol class="stage-list" id="stageList">
+                <li data-stage="voiceover"><span class="dot"><i class="fa-solid fa-check"></i></span>Generating voiceover</li>
+                <li data-stage="clips"><span class="dot"><i class="fa-solid fa-check"></i></span>Preparing your media</li>
+                <li data-stage="rendering"><span class="dot"><i class="fa-solid fa-check"></i></span>Rendering video</li>
+                <li data-stage="finalizing"><span class="dot"><i class="fa-solid fa-check"></i></span>Finalizing reel</li>
+            </ol>
+            <div class="notice notice-neutral" id="progressFail" hidden>
+                <div><strong>We couldn't finish this reel.</strong><div id="progressFailMsg"></div>
+                <button type="button" class="btn btn-primary" id="tryAgainBtn" style="margin-top:.75rem">Back to the form</button></div>
+            </div>
+        </div>
+
+        <div class="result-view panel" id="resultView" hidden>
+            <div class="result-grid">
+                <div class="detail-player"><video id="resultVideo" controls playsinline preload="metadata"></video></div>
+                <div>
+                    <p class="eyebrow">Your reel is ready</p>
+                    <h1 id="resultTitle" style="font-size:1.6rem"></h1>
+                    <dl class="spec-list">
+                        <dt>Platform</dt><dd id="resPlatform"></dd>
+                        <dt>Format</dt><dd id="resFormat"></dd>
+                        <dt>Resolution</dt><dd id="resRes"></dd>
+                        <dt>Duration</dt><dd id="resDur"></dd>
+                    </dl>
+                    <div class="notice notice-neutral" id="resultWarn" hidden>
+                        <div><strong>Voiceover length.</strong> <span id="resultWarnMsg"></span>
+                        <button type="button" class="btn btn-ghost btn-sm" id="resultAdjustBtn" style="margin-top:.5rem" hidden>Adjust narration</button></div>
+                    </div>
+                    <div class="notice notice-neutral" id="guestSave" hidden>
+                        <span><strong>Keep this reel.</strong> Create an account and it's added to your gallery automatically.</span>
+                    </div>
+                    <div class="result-actions">
+                        <a class="btn btn-primary" id="resDownload" href="#"><i class="fa-solid fa-download"></i> Download</a>
+                        <a class="btn btn-ghost" id="resGallery" href="{{ url_for('reels.gallery') }}" hidden><i class="fa-solid fa-table-cells"></i> Open My Gallery</a>
+                        <a class="btn btn-accent" id="resRegister" href="#" hidden>Create account to save</a>
+                        <button class="btn btn-ghost" type="button" id="createAnotherBtn"><i class="fa-solid fa-plus"></i> Create another</button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <aside class="create-aside" aria-label="Summary">
+            <div class="aside-card">
+                <h3>Your reel</h3>
+                <div class="aside-summary">
+                    <div><span>Platform</span><span id="sumPlatform"></span></div>
+                    <div><span>Format</span><span id="sumFormat"></span></div>
+                    <div><span>Media</span><span id="sumClips">0</span></div>
+                </div>
+                <p class="hint" style="margin:0">
+                    {% if trial.is_guest and trial.free_used %}Free reel used. Sign in to keep creating.
+                    {% elif trial.is_guest %}This one's free. After that, sign in to create more.
+                    {% else %}Saved to your private gallery when it's done.{% endif %}
+                </p>
+            </div>
+        </aside>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>window.NARRATION_CFG = {{ narration.js|tojson }};
+window.REEL_URLS = {
+    login: {{ url_for('auth.login', next=url_for('reels.create'), **{'from': 'free'})|tojson }},
+    register: {{ url_for('auth.register', next=url_for('reels.create'), **{'from': 'free'})|tojson }},
+    registerSave: {{ url_for('auth.register', next=url_for('reels.gallery'), **{'from': 'free'})|tojson }},
+    create: {{ url_for('reels.create')|tojson }}
+};</script>
+<script src="{{ url_for('static', filename='js/create.js') }}"></script>
+{% endblock %}

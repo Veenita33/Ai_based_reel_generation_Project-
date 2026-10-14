@@ -1,0 +1,20 @@
+{% extends "base.html" %}
+{% block title %}Profile - AI Reel Generator{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}">{% endblock %}
+{% block content %}
+<div class="container page" style="max-width:640px">
+    <h1>Profile</h1>
+    <div class="panel">
+        <div style="display:flex;gap:1rem;align-items:center;margin-bottom:1rem">
+            <span class="avatar" style="width:52px;height:52px;font-size:1.2rem">{{ current_user.username[:1] }}</span>
+            <div><h2 style="margin:0">{{ current_user.username }}</h2><span class="muted">{{ current_user.email }}</span></div>
+        </div>
+        <dl class="spec-list">
+            <dt>Plan</dt><dd>{{ plan_label }}</dd>
+            <dt>Member since</dt><dd>{{ current_user.created_at.strftime('%d %b %Y') if current_user.created_at else '-' }}</dd>
+            <dt>Reels created</dt><dd>{{ total }}</dd>
+        </dl>
+        <a class="btn btn-ghost" href="{{ url_for('reels.gallery') }}">Open My Gallery</a>
+    </div>
+</div>
+{% endblock %}

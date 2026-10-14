@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% block title %}AI Reel Generator - Turn your clips into a finished reel{% endblock %}
+{% block content %}
+<section class="hero"><div class="container hero-grid">
+    <div>
+        <p class="eyebrow">Voiceover, music and the right format - done</p>
+        <h1>Turn your videos and photos into a finished reel, <em>narrated by AI.</em></h1>
+        <p class="hero-lede">Upload your footage, write what you want said, pick where you'll post. We add a natural voiceover and render it at the right size for Instagram, YouTube Shorts, TikTok or Facebook.</p>
+        <div class="hero-cta">
+            <a class="btn btn-accent btn-lg" href="{{ url_for('reels.create') }}">
+                {% if current_user.is_authenticated %}Create a reel{% elif trial.free_used %}Create a reel{% else %}Create your first reel free{% endif %}
+            </a>
+            {% if not current_user.is_authenticated %}<a class="btn btn-ghost btn-lg" href="#how-it-works">See how it works</a>{% endif %}
+        </div>
+        <p class="hero-note">
+            {% if current_user.is_authenticated %}Your reels are saved in <a href="{{ url_for('reels.gallery') }}">My Gallery</a>.
+            {% elif trial.free_used %}You've used your free reel. <a href="{{ url_for('auth.login') }}">Sign in</a> or <a href="{{ url_for('auth.register') }}">create an account</a> to make more.
+            {% else %}Your first reel is on us 🎬 - no account needed.{% endif %}
+        </p>
+    </div>
+    <div class="hero-frames" aria-hidden="true">
+        <div class="hero-frame"><img src="{{ url_for('static', filename='1.jpg') }}" alt="" loading="lazy"></div>
+        <div class="hero-frame"><img src="{{ url_for('static', filename='3.jpg') }}" alt="" loading="lazy"></div>
+        <div class="hero-frame"><img src="{{ url_for('static', filename='2.jpg') }}" alt="" loading="lazy"></div>
+    </div>
+</div></section>
+
+<section class="section"><div class="container">
+    <p class="eyebrow">Formats</p>
+    <h2>Rendered at the right size for where you post</h2>
+    <div class="formats-table">
+        {% for f in formats %}
+        <div class="format-tile">
+            <i class="{{ f.icon }}"></i>
+            <b>{{ f.label }}</b>
+            {% if f.customizable %}<span>Your own size</span>{% else %}<span>{{ f.aspect_ratio }} · {{ f.resolution }}</span>{% endif %}
+        </div>
+        {% endfor %}
+    </div>
+</div></section>
+
+<section class="section" id="how-it-works"><div class="container">
+    <p class="eyebrow">How it works</p>
+    <h2>Three steps, usually a couple of minutes</h2>
+    <div class="steps">
+        <div class="step"><h3>Pick a platform</h3><p class="muted">Choose where it will be published. The size is set for you, or define your own.</p></div>
+        <div class="step"><h3>Add media and a script</h3><p class="muted">Upload videos, images and audio. Let AI write the narration from what's in them (or write your own), then choose a voice and optional music.</p></div>
+        <div class="step"><h3>Preview and download</h3><p class="muted">Watch it, download it, and find it again any time in your private gallery.</p></div>
+    </div>
+</div></section>
+
+<section class="section"><div class="container">
+    <p class="eyebrow">Examples</p>
+    <h2>Made with AI Reel Generator</h2>
+    <div class="showcase">
+        {% for n in range(1, 6) %}<img src="{{ url_for('static', filename=n ~ '.jpg') }}" alt="Example reel {{ n }}" loading="lazy">{% endfor %}
+    </div>
+</div></section>
+{% endblock %}

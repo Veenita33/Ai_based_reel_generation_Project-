@@ -1,0 +1,61 @@
+{% extends "base.html" %}
+{% block title %}{{ reel.title }} - AI Reel Generator{% endblock %}
+{% block extra_css %}<link rel="stylesheet" href="{{ url_for('static', filename='css/gallery.css') }}">{% endblock %}
+{% block content %}
+<div class="container page">
+    <div class="detail-grid">
+        <div class="detail-player">
+            {% if reel.video_url %}
+                <video controls playsinline preload="metadata" {% if reel.thumbnail_url %}poster="{{ reel.thumbnail_url }}"{% endif %} src="{{ reel.video_url }}" style="aspect-ratio: {{ reel.width or 9 }} / {{ reel.height or 16 }}; max-width:100%"></video>
+            {% else %}
+                <div class="state-box" style="color:#fff;border-color:#444">{% if reel.status == 'failed' %}This reel failed to generate.{% else %}Still rendering…{% endif %}</div>
+            {% endif %}
+        </div>
+        <div>
+            <p class="eyebrow">{{ reel.platform_label }}</p>
+            <div class="title-edit">
+                <h1 id="reelTitle">{{ reel.title }}</h1>
+                {% if not is_guest %}<button class="btn btn-ghost btn-icon" id="renameBtn" type="button" aria-label="Rename reel"><i class="fa-solid fa-pen"></i></button>{% endif %}
+            </div>
+            <dl class="spec-list">
+                <dt>Platform</dt><dd>{{ reel.platform_label }}</dd>
+                <dt>Format</dt><dd>{{ reel.aspect_ratio }}</dd>
+                <dt>Resolution</dt><dd>{{ reel.resolution or '-' }}</dd>
+                <dt>Duration</dt><dd>{{ reel.duration_label or '-' }}</dd>
+                <dt>Voice</dt><dd>{{ reel.voice_name or 'Default' }}</dd>
+                <dt>Created</dt><dd><time data-relative datetime="{{ reel.created_at }}"></time></dd>
+            </dl>
+            {% if is_guest %}<div class="notice" style="margin-bottom:1rem"><span><strong>Keep this reel.</strong> <a href="{{ url_for('auth.register', next=url_for('reels.gallery'), **{'from': 'free'}) }}">Create an account</a> and it's added to your gallery.</span></div>{% endif %}
+            <div class="result-actions" style="margin-top:0">
+                {% if reel.download_url %}<a class="btn btn-primary" href="{{ reel.download_url }}"><i class="fa-solid fa-download"></i> Download</a>{% endif %}
+                {% if not is_guest %}<a class="btn btn-ghost" href="{{ url_for('reels.gallery') }}">Back to gallery</a>
+                <button class="btn btn-ghost" id="deleteBtn" type="button"><i class="fa-regular fa-trash-can"></i> Delete</button>{% endif %}
+                <a class="btn btn-ghost" href="{{ url_for('reels.create') }}"><i class="fa-solid fa-plus"></i> Create another</a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+{% block extra_js %}
+<script>window.REEL_ID = {{ reel.id|tojson }}; window.REEL_URLS = {gallery: {{ url_for('reels.gallery')|tojson }}};</script>
+<script>
+(function () {
+  const id = window.REEL_ID;
+  const del = document.getElementById('deleteBtn');
+  if (del) del.addEventListener('click', async () => {
+    const ok = await App.confirm({title: 'Delete this reel?', message: 'This permanently removes the video. It can\'t be undone.', confirmLabel: 'Delete', danger: true});
+    if (!ok) return;
+    try { await App.api('/api/reel/' + id, {method: 'DELETE'}); window.location.href = window.REEL_URLS.gallery; }
+    catch (e) { App.toast(e.message, 'error'); }
+  });
+  const ren = document.getElementById('renameBtn');
+  if (ren) ren.addEventListener('click', async () => {
+    const h = document.getElementById('reelTitle');
+    const next = await App.prompt({title: 'Rename reel', value: h.textContent, label: 'Title', confirmLabel: 'Save'});
+    if (next === null || !next.trim()) return;
+    try { const d = await App.api('/api/reel/' + id, {method: 'PATCH', json: {title: next.trim()}}); h.textContent = d.reel.title; App.toast('Title updated', 'success'); }
+    catch (e) { App.toast(e.message, 'error'); }
+  });
+})();
+</script>
+{% endblock %}

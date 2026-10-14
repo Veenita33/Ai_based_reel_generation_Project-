@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} - AI Reel Generator{% endblock %}
+{% block content %}
+<div class="container center-page"><div>
+    <div class="code">{{ code }}</div>
+    <h1>{{ title }}</h1>
+    <p class="muted">{{ message }}</p>
+    <a class="btn btn-primary" href="{{ url_for('reels.home') }}">Back to home</a>
+</div></div>
+{% endblock %}

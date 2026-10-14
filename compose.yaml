@@ -1,0 +1,11 @@
+services:
+  ai-reel-generator:
+    build: .
+    container_name: ai-reel-generator
+    ports:
+      - "5000:5000"
+    env_file:
+      - .env
+    restart: unless-stopped
+    volumes:
+      - ./storage:/app/storage
